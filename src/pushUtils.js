@@ -11,14 +11,16 @@ export const sendPushNotification = async (title, body, options = {}) => {
     const registration = await navigator.serviceWorker.ready;
 
     // Отправляем сообщение в service worker
-    registration.active.postMessage({
-      type: "PUSH_NOTIFICATION",
-      payload: {
-        title,
-        body,
-        ...options,
-      },
-    });
+    if (registration.active) {
+      registration.active.postMessage({
+        type: "PUSH_NOTIFICATION",
+        payload: {
+          title,
+          body,
+          ...options,
+        },
+      });
+    }
 
     return true;
   } catch (error) {
