@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { sendPushNotification, subscribeToPushServer } from "./pushUtils";
 
 const PushNotifications = () => {
   const [isSupported, setIsSupported] = useState(false);
@@ -29,74 +28,50 @@ const PushNotifications = () => {
     }
 
     try {
-      const sub = await subscribeToPushServer();
-      if (sub) {
-        setSubscription(sub);
-        console.log(
-          "Подписка на push-уведомления создана и сохранена на сервере:",
-          sub
-        );
-      }
+      const registration = await navigator.serviceWorker.ready;
+      const sub = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(
+          "BEl62iUYgUivxIkv69yViEuiBIa40HI8g8V3VzA2U3Lgfe3DTjKl3A5aOFxXRm8FcmILs7IiHR7C1vVs7_oPv4"
+        ),
+      });
+      setSubscription(sub);
+      console.log("Подписка на push-уведомления создана:", sub);
     } catch (error) {
       console.error("Ошибка подписки:", error);
     }
   };
 
-  const sendTestNotification = async () => {
+  const sendTestNotification = () => {
     if (permission === "granted") {
-      await sendPushNotification(
-        "Тестовое уведомление",
-        "Это тестовое push-уведомление от вашего PWA!",
-        { tag: "test-notification" }
-      );
+      new Notification("Тестовое уведомление", {
+        body: "Это тестовое push-уведомление от вашего PWA!",
+        icon: "/pwa-192x192.png",
+        badge: "/favicon.ico",
+        tag: "test-notification",
+      });
     }
   };
 
   const sendScheduledNotification = () => {
     if (permission === "granted") {
-      setTimeout(async () => {
-        await sendPushNotification(
-          "Запланированное уведомление",
-          "Это уведомление было отправлено через 3 секунды!",
-          { tag: "scheduled-notification" }
-        );
+      setTimeout(() => {
+        new Notification("Запланированное уведомление", {
+          body: "Это уведомление было отправлено через 3 секунды!",
+          icon: "/pwa-192x192.png",
+          tag: "scheduled-notification",
+        });
       }, 3000);
     }
   };
 
-  const simulateRealPush = async () => {
-    if (permission === "granted" && subscription) {
-      try {
-        // Отправляем push-уведомление через наш локальный сервер
-        const response = await fetch("http://localhost:3001/api/send-push-to", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            subscription: subscription,
-            title: "Реальный Push от сервера!",
-            body: "Это push-уведомление отправлено с вашего собственного сервера! 🚀",
-            icon: "/pwa-192x192.png",
-            url: "/",
-          }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log("Push-уведомление отправлено через сервер:", result);
-        } else {
-          throw new Error("Ошибка отправки на сервер");
-        }
-      } catch (error) {
-        console.log("Ошибка отправки на сервер:", error);
-        // Fallback на локальную симуляцию
-        await sendPushNotification(
-          "Симуляция реального Push",
-          "Это симуляция push-уведомления от сервера!",
-          { tag: "real-push-simulation" }
-        );
-      }
+  const simulateRealPush = () => {
+    if (permission === "granted") {
+      new Notification("Симуляция реального Push", {
+        body: "Это симуляция push-уведомления!",
+        icon: "/pwa-192x192.png",
+        tag: "real-push-simulation",
+      });
     }
   };
 
@@ -201,12 +176,7 @@ const PushNotifications = () => {
             </button>
 
             <button
-              onClick={() =>
-                sendPushNotification(
-                  "SW Push",
-                  "Уведомление через Service Worker!"
-                )
-              }
+              onClick={simulateRealPush}
               style={{
                 backgroundColor: "#6f42c1",
                 color: "white",
@@ -216,21 +186,7 @@ const PushNotifications = () => {
                 cursor: "pointer",
               }}
             >
-              SW Push
-            </button>
-
-            <button
-              onClick={simulateRealPush}
-              style={{
-                backgroundColor: "#dc3545",
-                color: "white",
-                border: "none",
-                padding: "10px 20px",
-                borderRadius: "5px",
-                cursor: "pointer",
-              }}
-            >
-              Симуляция реального Push
+              Дополнительное уведомление
             </button>
           </>
         )}
@@ -267,27 +223,14 @@ const PushNotifications = () => {
           <strong>🧪 Как тестировать push-уведомления:</strong>
         </p>
         <ol style={{ margin: "5px 0", paddingLeft: "20px" }}>
-          <li>
-            Запустите push-сервер: <code>cd push-server && npm start</code>
-          </li>
+          <li>Нажмите "Запросить разрешение"</li>
+          <li>Разрешите уведомления в браузере</li>
           <li>Нажмите "Подписаться на push"</li>
-          <li>
-            Откройте{" "}
-            <a
-              href="http://localhost:3001"
-              target="_blank"
-              style={{ color: "#646cff" }}
-            >
-              http://localhost:3001
-            </a>{" "}
-            для отправки push
-          </li>
-          <li>Или нажмите "Симуляция реального Push"</li>
-          <li>Уведомление появится даже когда приложение закрыто!</li>
+          <li>Попробуйте разные кнопки уведомлений</li>
         </ol>
         <p style={{ fontSize: "12px", color: "#666", marginTop: "10px" }}>
-          💡 <strong>Важно:</strong> Service Worker работает в фоне и может
-          получать push-события даже когда PWA закрыто!
+          💡 <strong>Примечание:</strong> Это простые браузерные уведомления для
+          демонстрации PWA функций!
         </p>
       </div>
     </div>
